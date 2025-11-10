@@ -1,0 +1,281 @@
+# Appendix A -- TGP-TAI: Transaction Area Identifiers & Paths
+
+**Spec family:** TGP-00  
+**Appendix:** A (TAI)  
+**Version:** 0.1-draft  
+**Date:** 2025-11-03
+
+---
+
+## A.1 Purpose
+
+This appendix defines **Transaction Areas (TAs)**, **Transaction Area Identifiers (TAIs)**, and the **Transaction Area Path (T-Path)** used by the **Transaction Gateway Protocol (TGP)** for value-routing across economic/policy boundaries. Unlike BGP ASNs, TAIs are **self-asserted cryptographic identities**, requiring **no central registry**.
+
+TAs MAY also express constraints on **economic behavior**, including routing fees and protocol fee ratios, which are enforced via the **Economic Envelope** defined in TGP-01 §7.
+
+---
+
+## A.2 Terminology
+
+- **Transaction Area (TA):** An administrative/policy zone governing how value is accepted/forwarded (KYC, jurisdiction, assets, limits, fee behavior).  
+- **Transaction Gateway (TG):** A border function that speaks TGP for its TA.  
+- **Transaction Area Identifier (TAI):** A cryptographic identifier for a TA.  
+- **Transaction Area Path (T-Path):** Ordered list of TAIs recorded on value route advertisements and quotes.  
+- **Policy Root:** Merkle root of the canonical policy corpus that governs a TA during the period of an advertisement (including any fee constraints).  
+- **Attestation:** A signed statement from one TA about another (endorsement, constraints, revocation, etc.).  
+- **Economic Envelope:** The optional TGP-01 structure describing price and fees (`price`, `buyer_fee`, `routing_fee`, `protocol_fee`) for a transaction.
+
+---
+
+## A.3 Canonical TAI Construction
+
+**Goal:** Collision-resistant, self-sovereign identifiers derivable from public data and keys.
+
+**Inputs (normalized):**
+```text
+pubkey        := uncompressed ECDSA secp256k1 public key (65 bytes, 0x04…)
+areaName      := UTF-8 string, NFC normalized, max 96 bytes
+policyRoot    := 32-byte Merkle root (0x…32B)
+versionTag    := ASCII "TAI-v1"
+
+Canonical object (CBOR suggested; JSON shown for clarity):
+
+{
+  "version": "TAI-v1",
+  "pubkey":  "0x04abcd…",
+  "areaName":"Reflexive-Insurance-CA",
+  "policyRoot":"0x9341…aa23"
+}
+
+Hashing:
+
+taiHash := keccak256( canonical-serialize(object) )
+TAI     := "tai:keccak256:" + hex(taiHash)
+
+Notes
+	•	Implementations MUST canonicalize field order and encodings to avoid hash drift.
+	•	policyRoot enables policy-bound identities; rotating policy implies a new TAI (see A.9).
+	•	Fee constraints (e.g., max routing_fee, max protocol_fee.ratio) SHOULD be part of the policy corpus that rolls into policyRoot.
+
+⸻
+
+A.4 Transaction Area Object (TAO)
+
+{
+  "tai": "tai:keccak256:7abf92c6…",
+  "areaName": "Reflexive-Insurance-CA",
+  "pubkey": "0x04a7…efb9",
+  "policyRoot": "0x9341…aa23",
+  "capabilities": {
+    "settlement": ["eip-3009", "eip-2612"],
+    "features": ["zkp.reveal-min", "qres.toggle", "tdr.worm"],
+    "fees": {
+      "supportsEconomicEnvelope": true,
+      "maxRoutingFeeBps": 50,
+      "maxProtocolFeeRatio": 0.20
+    }
+  },
+  "attestations": [
+    {
+      "from": "tai:keccak256:8bde4411…",
+      "type": "endorsement",
+      "statement": "meets.us.regulated.P1",
+      "sig": "0xaaa…"
+    }
+  ],
+  "metadata": {
+    "domain": "reflexiveinsurance.com",
+    "contact": "pgp:…",
+    "jurisdictions": ["US-CA"]
+  }
+}
+
+Signing:
+A TA MUST sign its TAO with pubkey. Peers MUST verify the signature before accepting advertisements or quotes referencing this TAI.
+
+When capabilities.fees.supportsEconomicEnvelope is true, gateways in this TA MUST enforce any fee constraints implied by maxRoutingFeeBps and maxProtocolFeeRatio against the economic_envelope (TGP-01 §7) on paths that traverse this TA.
+
+⸻
+
+A.5 Transaction Area Path (T-Path)
+
+An ordered list of TAIs attached to TGP advertisements/quotes to provide loop-free path-vector semantics.
+
+{
+  "tgpPath": "tai:7abf92c6>tai:8bde4411>tai:2cf99133",
+  "transactionAreas": [
+    {"tai":"tai:7abf92c6…","areaName":"Reflexive-Insurance-CA","policyRoot":"0x9341…aa23"},
+    {"tai":"tai:8bde4411…","areaName":"MaiaEdge-AI-US","policyRoot":"0x2291…ee12"},
+    {"tai":"tai:2cf99133…","areaName":"Provider-EU","policyRoot":"0x77aa…19c2"}
+  ]
+}
+
+Loop prevention:
+A TG MUST reject any route/quote whose tgpPath already contains its own TAI.
+
+Gateways MAY use policyRoot and TA fee capabilities to pre-filter or re-weight paths based on local policy, including economic considerations.
+
+⸻
+
+A.6 Embedding in Quotes and x402 Context
+
+A.6.1 TGP Quote (excerpt)
+
+{
+  "tgpQuoteId": "tqp-7ff5b6b2",
+  "asset": {
+    "chain":"base-sepolia",
+    "erc20":"0x…USDC",
+    "decimals":6,
+    "symbol":"USDC"
+  },
+  "price": {
+    "amount":"10000",
+    "currency":"USDC",
+    "ttlSeconds":45
+  },
+  "transactionAreas": [ /* as in A.5 */ ],
+  "tgpPath": "tai:7abf92c6>tai:8bde4411",
+  "policyTags": ["us.regulated","kyc.P1"],
+  "economic_envelope": {
+    "price": {
+      "amount": "10000",
+      "asset": "evm:ETH:1",
+      "payer": "buyer",
+      "payee": "seller"
+    },
+    "buyer_fee": {
+      "amount": "50",
+      "asset": "evm:ETH:1",
+      "payer": "buyer",
+      "payee": "seller",
+      "protocol_fee": {
+        "ratio": "0.2",
+        "dest": "tgp://burnrouter",
+        "mode": "auto_buy_burn"
+      }
+    },
+    "routing_fee": {
+      "amount": "10",
+      "asset": "evm:ETH:1",
+      "payer": "buyer",
+      "payee": "tbc_operator",
+      "policy_ref": "policy://carrierA/us-ca/routing-fee-v1"
+    }
+  },
+  "sig": "tai:7abf92c6 signer over quote hash"
+}
+
+	•	When economic_envelope is present, all TAs listed in tgpPath SHOULD be compatible with the envelope’s fee structure and MUST reject the quote if it violates their fee policy (e.g., routing_fee exceeds maxRoutingFeeBps).
+
+A.6.2 x402 header (single-hop, exact+tgp1)
+
+{
+  "x402Version": 1,
+  "scheme": "exact+tgp1",
+  "network": "pulsechain",
+  "payload": {
+    "chainId": 369,
+    "signature": "0x…",
+    "authorization": {
+      "from":"0x857b…b66",
+      "to":"0x2096…87C",
+      "value":"10000",
+      "validAfter":"1740672089",
+      "validBefore":"1740672154",
+      "nonce":"0xf374…3480-tqp-7ff5b6b2"
+    },
+    "tgpContext": {
+      "tgpQuoteId": "tqp-7ff5b6b2",
+      "tgpPath": "tai:7abf92c6>tai:8bde4411",
+      "policyRoot": "0x9341…aa23",
+      "economicEnvelopeHash": "0x9fbc…e201"
+    }
+  }
+}
+
+economicEnvelopeHash SHOULD be the hash of the final committed economic_envelope as defined in TGP-01 §7, allowing x402-level correlation between service delivery, TA path, and economic terms.
+
+⸻
+
+A.7 Attestations
+
+Attestations are optional signed claims about a TA or a quote.
+
+{
+  "attestationVersion": 1,
+  "about": "tai:8bde4411…",
+  "type": "endorsement | constraint | revocation",
+  "statement": "meets.eu.regulated.P2",
+  "evidence": "uri:ipfs://… or hash:0x…",
+  "issuer": "tai:7abf92c6…",
+  "sig": "0xdead…beef"
+}
+
+Gateways MAY weight routes/quotes using local policies over received attestations.
+Attestations MAY also reference economic behavior (e.g., "does not exceed 25 bps routing fees on cross-border payments").
+
+⸻
+
+A.8 Discovery
+
+Implementations MAY support any mix of:
+	1.	Static peering (out-of-band TAOs exchanged and pinned).
+	2.	x402-advertised TAOs during session setup.
+	3.	On-chain registry (optional) mapping TAIs → TAOs for transparency.
+	4.	Gossip among TGs (signed TAOs only).
+
+Gateways MUST cache TAOs with signature and policyRoot for the duration of quote TTLs.
+If capabilities.fees.supportsEconomicEnvelope is true, gateways SHOULD cache fee constraints as part of TAO state.
+
+⸻
+
+A.9 Rotation, Revocation, and Policy Updates
+	•	Key rotation: Publish a new TAO with pubkey', include an attestation signed by old key linking old→new.
+	•	Policy update: New policyRoot ⇒ new TAI; quotes bearing old TAI expire per TTL. Economic policy (including fee constraints) SHOULD be considered part of the policy corpus.
+	•	Revocation: Issue a revocation attestation; peers MUST reject future quotes from that TAI after grace period.
+	•	Clock discipline: Use NTP/PTP and apply skew windows for TTL and validity checks.
+
+⸻
+
+A.10 Security Considerations
+	•	Canonical serialization: Use stable encodings to avoid TAI mismatches.
+	•	Replay resistance: Bind quotes to tgpQuoteId, tgpPath, policyRoot, and, when present, economicEnvelopeHash; bind x402 nonce to tgpQuoteId.
+	•	DoS: Rate-limit verification and cache validated TAOs/attestations.
+	•	Jurisdictional tagging: Prefer explicit policyTags and jurisdictions; avoid inference.
+	•	Minimal disclosure: Include only necessary policy hashes; avoid leaking full policy documents in-band.
+	•	Economic consistency: When Economic Envelopes are used (TGP-01 §7), gateways MUST ensure that fees comply with TA policies advertised via policyRoot and TAO capabilities.fees.
+
+⸻
+
+A.11 Minimal Compliance Checklist (TG)
+	•	Verify TAO signature and policyRoot.
+	•	Reject tgpPath containing self TAI (loop).
+	•	Cache TAO and attestations for TTL.
+	•	Bind quotes to tgpQuoteId + tgpPath + policyRoot.
+	•	Bind x402 nonce to tgpQuoteId.
+	•	If economic_envelope present, verify that fee values (routing_fee, protocol_fee.ratio) comply with TA policy.
+	•	Emit TDR rows including tgpPath, egress TAI, and optionally economicEnvelopeHash.
+
+⸻
+
+A.12 Example TDR Row (with TA context)
+
+ts_start,ts_end,client_id,tgp_path,chain_id,token,amount,tx_hash,block,rs,tai_egress,quote_id,economic_envelope_hash,rc
+2025-11-03T08:14:20Z,2025-11-03T08:14:33Z,c-9b12,
+tai:7abf92c6>tai:8bde4411,369,USDC,10000,0xabc…def,12345678,0x2096…87C,
+tai:8bde4411,tqp-7ff5b6b2,0x9fbc…e201,OK
+
+
+⸻
+
+A.13 IANA-Style Considerations (None)
+
+No central number registry is required for TAIs. Uniqueness is derived from cryptographic construction. Implementations MAY optionally use discovery registries for convenience, but correctness does not depend on them.
+
+⸻
+
+A.14 Relationship to TGP-01 (Informative)
+	•	TGP-00 defines TAIs, T-Paths, and their role in routing and policy enforcement.
+	•	TGP-01 defines the Economic Envelope (price and fees, including PROVE burn-related protocol fees).
+	•	Together, they allow TAs to express economic and regulatory constraints while keeping settlement non-custodial and transparent.
