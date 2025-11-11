@@ -1,98 +1,75 @@
-# Transaction Border Controller (TBC) Monorepo
+# Transaction Border Controller (TBC)
 
-**Organization:** Ledger of Earth  
-**Version:** 0.1-draft  
-**Status:** Active Development  
-
-—
+A programmable transaction firewall and policy gateway enabling secure and policy aware settlement across blockchains, domains, and agents.
 
 ## Overview
 
-This monorepo houses both the **protocol specifications** and the **reference implementation**
-for the **Transaction Border Controller (TBC)** — a Layer-8 appliance that routes and enforces
-policy for cross-ledger settlements using the **Transaction Gateway Protocol (TGP-00)** and
-related standards.
+TBC provides trustless, privacy-preserving payment settlement for digital and physical goods. The CoreProver integration implements a dual-commitment model where **both buyer and seller must commit** before claims can be processed.
 
-The TBC functions as the **economic control plane** for blockchain systems, analogous to a
-Session Border Controller in telecom architecture.
+## Key Features
 
-—
+- **Dual-Commitment Security**: No unilateral advantage - both parties must commit
+- **Flexible Seller Commitments**: Counter-escrow OR legal signature
+- **Privacy-First Receipts**: NFT receipts stored in immutable vault, accessed via ZK proofs
+- **Timed Release**: Automatic payment release for service-based transactions
+- **Multi-Chain Support**: EVM-compatible (PulseChain, Base)
 
-## Directory Layout
+## Architecture
 
-| Path | Purpose |
-|——|-———|
-| `specs/` | Normative specifications (TxIP-00, TGP-00, X402-EXT, appendices). |
-| `src/controller/` | Rust implementation of the Transaction Border Controller appliance. |
-| `src/coreprover/` | CoreProver library for escrow and proof-of-settlement receipts. |
-| `tests/` | Integration and simulation harnesses. |
-| `docs/` | Architecture, system topology, roadmap, and context for AI agents. |
-| `.anthropic/` | AI agent configuration for Claude MCP and related tools. |
+```
+┌─────────────────┐
+│   TBC Gateway   │  ← Existing routing & agent coordination
+└────────┬────────┘
+         │
+┌────────▼────────┐
+│ CoreProver SDK  │  ← High-level builder API
+└────────┬────────┘
+         │
+┌────────▼────────┐
+│ CoreProver      │  ← Contract bindings & event listeners
+│    Bridge       │
+└────────┬────────┘
+         │
+┌────────▼────────┐
+│   Solidity      │  ← On-chain escrow & receipt vault
+│   Contracts     │
+└─────────────────┘
+```
 
-—
-
-## Build Instructions
+## Quick Start
 
 ```bash
-# Build everything
-cargo build
+# Install dependencies
+./scripts/setup-dev.sh
 
-# Run the controller (development mode)
-cargo run --package controller
+# Build workspace
+cargo build --workspace
 
 # Run tests
 cargo test --workspace
 
-#Controller Messaging Tests/Demo.
+# Start local development
+docker-compose -f docker/docker-compose.dev.yml up
+```
 
-1.Open Codespace and from the terminal;
+## Repository Structure
 
-2.Start the controller.
+- `crates/tbc-core` - Core gateway protocol
+- `crates/tbc-gateway` - TGP implementation
+- `crates/coreprover-contracts` - Solidity smart contracts (Foundry)
+- `crates/coreprover-bridge` - Rust ↔ Solidity bridge
+- `crates/coreprover-service` - Settlement service
+- `crates/coreprover-zk` - ZK circuits & provers
+- `crates/coreprover-cli` - Operator CLI
+- `crates/coreprover-sdk` - Developer SDK
 
-cargo run —package controller
+## Documentation
 
-3. Send a QUERY message to the controller
+See `docs/` for comprehensive guides:
+- [CoreProver Specification](docs/specs/coreprover.md)
+- [Quick Start Guide](docs/guides/quickstart.md)
+- [API Reference](docs/api/README.md)
 
-curl -X POST http://127.0.0.1:8080/tgp \
-  -H “Content-Type: application/json” \
-  -d ‘{
-    “phase”: “QUERY”,
-    “id”: “q-demo001”,
-    “from”: “buyer://alice.wallet”,
-    “to”: “seller://bob.service”,
-    “asset”: “USDC”,
-    “amount”: 1000000,
-    “escrow_from_402”: true,
-    “escrow_contract_from_402”: “0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb”,
-    “zk_profile”: “OPTIONAL”
-  }’
-  
-  4. Observe the OFFER is returned from the Controller
-  
-  {
-  “phase”: “OFFER”,
-  “id”: “offer-demo001”,
-  “query_id”: “q-demo001”,
-  “asset”: “USDC”,
-  “amount”: 1000000,
-  “coreprover_contract”: “0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb”,
-  “session_id”: “sess-demo001”,
-  “zk_required”: false,
-  “economic_envelope”: { “max_fees_bps”: 50, “expiry”: “2025-11-10T23:59:59Z” } 
-}
+## License
 
-  5. Send a TGP.SETTLE Message.
-  
-curl -X POST http://127.0.0.1:8080/tgp \
-  -H “Content-Type: application/json” \
-  -d ‘{
-    “phase”: “SETTLE”,
-    “id”: “settle-demo001”,
-    “query_or_offer_id”: “offer-demo001”,
-    “success”: true,
-    “source”: “buyer-notify”,
-    “layer8_tx”: “0xDEADBEEF”,
-    “session_id”: “sess-demo001”
-  }’ 
-  
-   6. Observe the Ok response from the Controller.
+MIT OR Apache-2.0
