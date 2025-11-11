@@ -1,0 +1,11 @@
+# coreprover-cli
+
+CLI tool for CoreProver operators.
+
+## Usage
+
+```bash
+coreprover escrow create --seller 0x... --amount 1.0
+coreprover escrow query --order-id 0x...
+coreprover monitor --chain pulsechain
+```

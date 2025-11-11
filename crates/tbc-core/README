@@ -1,0 +1,18 @@
+# tbc-core
+
+Core protocol definitions and gateway logic for the Transaction Border Controller.
+
+## Overview
+
+This crate provides the foundational types and traits for TBC's gateway protocol, including:
+- Message routing definitions
+- Protocol state machines
+- Core type definitions
+
+## Usage
+
+```rust
+use tbc_core::{Gateway, Protocol};
+
+// Example usage
+```

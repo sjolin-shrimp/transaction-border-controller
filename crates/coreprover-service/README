@@ -1,0 +1,33 @@
+# coreprover-service
+
+Settlement service for CoreProver escrow system.
+
+## Overview
+
+The CoreProver service monitors blockchain events, processes settlements, handles timeouts, and provides a REST API for querying escrow state.
+
+## Features
+
+- Event monitoring and indexing
+- Automatic timeout processing
+- Timed release triggers
+- REST API for queries
+- PostgreSQL for persistent storage
+- Redis for caching
+
+## Running
+
+```bash
+# With default config
+cargo run -p coreprover-service
+
+# With custom config
+cargo run -p coreprover-service -- --config custom.toml
+```
+
+## API Endpoints
+
+- `GET /health` - Health check
+- `GET /escrow/:order_id` - Get escrow details
+- `POST /escrow` - Create new escrow
+- `GET /events` - Query events

@@ -1,0 +1,16 @@
+# coreprover-sdk
+
+Developer SDK for CoreProver integration.
+
+## Usage
+
+```rust
+use coreprover_sdk::EscrowBuilder;
+
+let escrow = EscrowBuilder::new()
+    .with_buyer(&buyer)
+    .with_seller(&seller)
+    .with_amount(100)
+    .build()
+    .await?;
+```

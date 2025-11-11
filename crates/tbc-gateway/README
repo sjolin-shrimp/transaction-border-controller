@@ -1,0 +1,13 @@
+# tbc-gateway
+
+TGP (Transaction Gateway Protocol) implementation for TBC.
+
+## Overview
+
+This crate implements the gateway routing and agent coordination logic.
+
+## Features
+
+- Order routing
+- Agent management
+- Message coordination

@@ -1,0 +1,21 @@
+# coreprover-contracts
+
+Solidity smart contracts for CoreProver escrow system.
+
+## Build
+
+```bash
+forge build
+```
+
+## Test
+
+```bash
+forge test -vvv
+```
+
+## Deploy
+
+```bash
+forge script script/Deploy.s.sol --rpc-url $RPC_URL --broadcast
+```
