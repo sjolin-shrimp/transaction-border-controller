@@ -14,49 +14,52 @@ All accepted sessions result in emission of a **Transaction Detail Record (TDR)*
 
 - Abstract
 - 1. Introduction
-  - 0.1 Where TGP Runs
-  - 0.2 Relationship to x402
-  - 0.3 Design Principles
-- 1. Architecture
-  - 1.1 Network Topology
-  - 1.2 Gateway Functions
-  - 1.3 Message Flow
-  - 1.4 Settlement Profiles
-- 1. Message Types and Semantics
-  - 2.1 QUERY Message
-  - 2.2 OFFER Message
-  - 2.3 SETTLE Message
-  - 2.4 ERROR Message
-  - 2.5 ZkProfile Enumeration
-  - 2.6 EconomicEnvelope Structure
-  - 2.7 SettleSource Enumeration
-  - 2.8 Message Encoding
-- 1. State Machine
-- 1. Security Considerations
-- 1. Attribute Registry
-- 1. x402 Integration
-- 1. Example Flows
-- 1. Future Extensions
-- 1. References
-- 1. The 10-Layer Trust Stack (Informative)
-- 1. TGP Info Block (TIB)
-- 1. Policy Expression Language (PEL-0.1)
-- 1. State Summary Objects (SSO)
-- 1. Receipts & TDR Triplet (Informative)
-- 1. Prover Abstraction & Settlement Middleware (Informative)
-- Appendices
+  - 1.1 Where TGP Runs
+  - 1.2 Relationship to x402
+  - 1.3 Design Principles
+- 2 Architecture
+  - 2.1 Network Topology
+  - 2.2 Message Types
+  - 2.3 Controller States
+  - 2.4 Settlement Profiles
+- 3. Message Types and Semantics
+  - 3.1 QUERY Message
+  - 3.2 OFFER Message
+  - 3.3 SETTLE Message
+  - 3.4 ERROR Message
+  - 3.5 ZkProfile Enumeration
+  - 3.6 EconomicEnvelope Structure
+  - 3.7 SettleSource Enumeration
+  - 3.8 Message Encoding
+- 4. State Machine
+- 5. Security Considerations
+- 6. Attribute Registry
+- 7. x402 Integration
+- 8. Example Flows
+- 9. Future Extensions
+- 10. References
+- 11. The 10-Layer Trust Stack (Informative)
+- 12. TGP Info Block (TIB)
+- 13. Policy Expression Language (PEL-0.1)
+- 14. State Summary Objects (SSO)
+- 15. Receipts & TDR Triplet (Informative)
+- 16. Prover Abstraction & Settlement Middleware (Informative)
+- Appendices A-I
 
 ——
 
-## 0. Introduction
+## 1. Introduction
 
-*(No changes to this section)*
+### 1.1 Where TGP Runs
+
+TGP operates at the edges of transaction domains, enforcing trust-zone policies before economic settlement is permitted. It runs on gateways that may interact directly with RPC interfaces or flattened ledger data to determine settlement eligibility.
+
 
 ——
 
-## 1. Architecture
+## 2. Architecture
 
-### 1.1 Network Topology
+### 2.1 Network Topology
 
 TGP is designed to operate across trust domains, enabling value-routing and policy negotiation between distinct agents, networks, and protocols. The topology includes both human participants and machine agents that mediate trust and compliance across domain boundaries.
 
@@ -75,15 +78,34 @@ TGP is designed to operate across trust domains, enabling value-routing and poli
 
 ——
 
-### 1.2 Gateway Functions
+## 2.2 Message Types
 
-*(No changes to this section)*
+TGP defines the following message types for inter-gateway signaling:
 
-——
+- `QUERY`: Initiates a capability or path query
+- `OFFER`: Suggests a viable route or settlement method
+- `ACCEPT`: Confirms a proposed route or agreement
+- `FINAL`: Signals readiness for finalization
+- `RECEIPT`: Confirms successful delivery or transfer
+- `REJECT`: Denies or aborts the proposed action
+- `ERROR`: Notifies of protocol or transaction failure
 
-### 1.3 Message Flow
+These messages may be encapsulated in x402-compatible payloads or used independently across custom transport layers.
 
-*(No changes to this section)*
+## 2.3 Controller States
+
+Each TGP session progresses through well-defined states:
+
+1. `Idle`
+2. `QuerySent`
+3. `OfferReceived`
+4. `AcceptSent`
+5. `Finalizing`
+6. `Settled`
+7. `Errored`
+
+Transaction Controllers use timers and failure handling logic to resolve unresponsive or malformed messages, and may re-initiate under retry policy.
+
 
 ——
 
@@ -155,21 +177,21 @@ The Buyer receives a 402 with escrow metadata but consults a TGP Controller for 
 
 **TGP Message Flow:**
 
-1. **Buyer → Controller:** `TGP.QUERY`
+A. **Buyer → Controller:** `TGP.QUERY`
 
 - Includes `escrow_from_402: true`
 - Includes `escrow_contract_from_402: “0x742d35...”`
 - Buyer sets `zk_profile: OPTIONAL` or `REQUIRED`
 
-1. **Controller → Buyer:** `TGP.OFFER`
+B. **Controller → Buyer:** `TGP.OFFER`
 
 - Validates the CoreProver contract against policy
 - Returns `coreprover_contract: “0x742d35...”` (same or substituted)
 - Returns `session_id: “sess-xyz”` for tracking
 - Sets `zk_required: true/false` based on policy
 
-1. **Buyer → CoreProver:** Submits Layer-8 transaction with `session_id`
-1. **Buyer → Controller:** `TGP.SETTLE`
+C. **Buyer → CoreProver:** Submits Layer-8 transaction with `session_id`
+D. **Buyer → Controller:** `TGP.SETTLE`
 
 - Reports `success: true`, `layer8_tx: “0x9f2d...”`, `session_id: “sess-xyz”`
 - Or Controller’s watcher auto-detects settlement
@@ -208,29 +230,29 @@ In this profile, the Buyer **always** consults the Controller before settlement.
 
 **TGP Message Flow:**
 
-1. **Buyer → Controller:** `TGP.QUERY`
+A. **Buyer → Controller:** `TGP.QUERY`
 
 - May include `escrow_from_402: false` (no 402 headers)
 - Or `escrow_from_402: true` but Controller overrides with policy-selected contract
 - Buyer sets `zk_profile: REQUIRED` to demand escrow
 
-1. **Controller → Buyer:** `TGP.OFFER`
+B. **Controller → Buyer:** `TGP.OFFER`
 
 - Returns `coreprover_contract: “0xPolicyApproved...”`
 - Returns `session_id: “sess-abc123”` for onchain routing
 - Sets `zk_required: true` (enforced by policy)
 - Includes `economic_envelope` with fee caps and expiry
 
-1. **Buyer → CoreProver:** Submits Layer-8 transaction
+C. **Buyer → CoreProver:** Submits Layer-8 transaction
 
 - Includes `session_id` in transaction metadata or calldata
 - Funds escrowed until Seller acknowledges or provides ZK proof
 
-1. **Seller → CoreProver:** Acknowledges delivery (onchain or offchain signature)
+D. **Seller → CoreProver:** Acknowledges delivery (onchain or offchain signature)
 
 - CoreProver releases funds upon valid acknowledgment
 
-1. **Controller or Buyer → Controller:** `TGP.SETTLE`
+E. **Controller or Buyer → Controller:** `TGP.SETTLE`
 
 - `source: “controller-watcher”` if Controller’s indexer detected settlement
 - `source: “buyer-notify”` if Buyer explicitly reports
