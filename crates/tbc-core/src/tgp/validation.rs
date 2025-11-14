@@ -1,12 +1,9 @@
-# TGP Validation Helpers
+//# TGP Validation Helpers
 
-**Destination Path:** `crates/tbc-core/src/tgp/validation.rs`
+//**Destination Path:** `crates/tbc-core/src/tgp/validation.rs`
 
-**Implementation:** M1 - TGP Message Parsing & Basic Routing
+//**Implementation:** M1 - TGP Message Parsing & Basic Routing
 
------
-
-```rust
 //! TGP message validation helpers
 //!
 //! This module provides reusable validation functions for TGP message fields.
@@ -32,7 +29,7 @@
 //! validate_positive_amount(1_000_000, "amount")?;
 //!
 //! // Validate an Ethereum address
-//! validate_address("0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb", "contract")?;
+//! validate_address("0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0", "contract")?;
 //! # Ok::<(), String>(())
 //! ```
 
@@ -114,7 +111,7 @@ pub fn validate_positive_amount(amount: u64, field_name: &str) -> Result<(), Str
 ///
 /// ```rust
 /// # use tbc_core::tgp::validation::validate_address;
-/// let valid = "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb";
+/// let valid = "0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0";
 /// assert!(validate_address(valid, "contract").is_ok());
 ///
 /// let invalid = "0x123"; // Too short
@@ -417,14 +414,14 @@ mod tests {
     #[test]
     fn test_validate_address() {
         // Valid addresses
-        assert!(validate_address("0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb", "contract").is_ok());
+        assert!(validate_address("0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0", "contract").is_ok());
         assert!(validate_address("0x0000000000000000000000000000000000000000", "contract").is_ok());
 
         // Invalid addresses
-        assert!(validate_address("742d35Cc6634C0532925a3b844Bc9e7595f0bEb", "contract").is_err()); // No 0x
+        assert!(validate_address("742d35Cc6634C0532925a3b844Bc9e7595f0bEb0", "contract").is_err()); // No 0x
         assert!(validate_address("0x123", "contract").is_err()); // Too short
         assert!(validate_address("0x742d35Cc6634C0532925a3b844Bc9e7595f0bEbXX", "contract").is_err()); // Too long
-        assert!(validate_address("0xGGGd35Cc6634C0532925a3b844Bc9e7595f0bEb", "contract").is_err()); // Invalid hex
+        assert!(validate_address("0xGGGd35Cc6634C0532925a3b844Bc9e7595f0bEb0", "contract").is_err()); // Invalid hex
     }
 
     #[test]
@@ -489,4 +486,3 @@ mod tests {
         assert!(validate_correlation_id("invalid", Some("QUERY")).is_err()); // Wrong prefix
     }
 }
-```

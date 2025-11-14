@@ -65,6 +65,7 @@ cargo test -p <crate-name> —test <file_name> — —nocapture > output.txt 2>&
 ```bash
 cat output.txt
 ```
+cargo test --workspace --all-targets --all-features > test_output.txt 2>&1
 
 —
 

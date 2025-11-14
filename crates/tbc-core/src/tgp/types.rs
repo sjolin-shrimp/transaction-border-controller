@@ -1,12 +1,8 @@
-# TGP Supporting Types
+// # TGP Supporting Types
 
-**Destination Path:** `crates/tbc-core/src/tgp/types.rs`
+// **Destination Path:** `crates/tbc-core/src/tgp/types.rs`
 
-**Implementation:** M1 - TGP Message Parsing & Basic Routing
-
------
-
-```rust
+// **Implementation:** M1 - TGP Message Parsing & Basic Routing
 //! TGP supporting types per TGP-00 specification
 //!
 //! This module contains enumerations and structures that support the core
@@ -514,4 +510,3 @@ mod tests {
         assert_eq!(SettleSource::BuyerNotify.to_string(), "buyer-notify");
     }
 }
-```

@@ -1,12 +1,8 @@
-# TGP Message Type Definitions
+//# TGP Message Type Definitions
 
-**Destination Path:** `crates/tbc-core/src/tgp/messages.rs`
+//**Destination Path:** `crates/tbc-core/src/tgp/messages.rs`
 
-**Implementation:** M1 - TGP Message Parsing & Basic Routing
-
------
-
-```rust
+//**Implementation:** M1 - TGP Message Parsing & Basic Routing
 //! TGP message type definitions per TGP-00 specification §3.1-3.4
 //!
 //! This module defines the core message structures for the Transaction Gateway Protocol.
@@ -706,4 +702,3 @@ mod tests {
         assert!(offer.session_id.is_some());
     }
 }
-```

@@ -1,12 +1,9 @@
-# TGP State Machine Implementation
+//# TGP State Machine Implementation
 
-**Destination Path:** `crates/tbc-core/src/tgp/state.rs`
+//**Destination Path:** `crates/tbc-core/src/tgp/state.rs`
 
-**Implementation:** M1 - TGP Message Parsing & Basic Routing
+//**Implementation:** M1 - TGP Message Parsing & Basic Routing
 
------
-
-```rust
 //! TGP session state machine per TGP-00 §4
 //!
 //! This module implements the state machine for TGP sessions, ensuring that
@@ -856,4 +853,3 @@ mod tests {
         assert_eq!(session.created_at, created); // Created should not change
     }
 }
-```
