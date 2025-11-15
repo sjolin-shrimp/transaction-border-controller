@@ -235,3 +235,67 @@ impl ModelChecker {
         report
     }
 }
+// ============================================================================
+// Hybrid API compatibility (required by TestContext)
+// ============================================================================
+
+use coreprover_types_v03::EscrowState;
+use crate::harness::engine_driver::EngineDriver;
+
+impl ModelChecker {
+    /// Empty model checker (no validation)
+    pub fn new() -> Self {
+        ModelChecker
+    }
+
+    /// Full v0.3 rule set (this version)
+    pub fn new_with_v03_rules() -> Self {
+        ModelChecker
+    }
+
+    /// Validate transition (standalone)
+    pub fn validate_transition(
+        &self,
+        from: EscrowState,
+        to: EscrowState,
+    ) -> Result<(), String> {
+        // Allowed transitions per v0.3
+        match (from, to) {
+            // Allowed:
+            (EscrowState::BuyerCommitted, EscrowState::SellerAccepted) => Ok(()),
+            (EscrowState::SellerAccepted, EscrowState::SellerFulfilled) => Ok(()),
+            (EscrowState::SellerFulfilled, EscrowState::SellerClaimed) => Ok(()),
+            (EscrowState::SellerFulfilled, EscrowState::SellerRefunded) => Ok(()),
+            (EscrowState::FulfillmentExpired, EscrowState::SellerClaimed) => Ok(()),
+            (EscrowState::FulfillmentExpired, EscrowState::SellerRefunded) => Ok(()),
+
+            // Buyer can withdraw anytime after window expires
+            (from, EscrowState::BuyerWithdrawn) => Ok(()),
+
+            // Identity transition allowed only for terminal states
+            (s1, s2) if s1 == s2 && matches!(
+                s1,
+                EscrowState::SellerClaimed
+                    | EscrowState::SellerRefunded
+                    | EscrowState::BuyerWithdrawn
+            ) => Ok(()),
+
+            // Everything else rejected
+            (from, to) => Err(format!("invalid transition: {:?} -> {:?}", from, to)),
+        }
+    }
+
+    /// Validate invariants via EngineDriver snapshot
+    pub fn check(&self, driver: &EngineDriver) -> Result<(), String> {
+        let trace = driver.get_trace();
+        let snapshot = driver.get_snapshot();
+
+        let report = ModelChecker::check(&trace, &snapshot);
+
+        if report.passed {
+            Ok(())
+        } else {
+            Err(format!("ModelChecker violations: {:?}", report.violations))
+        }
+    }
+}

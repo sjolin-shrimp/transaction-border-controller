@@ -59,6 +59,7 @@ cargo test -p <crate-name> — —nocapture
 ### **Save stdout + stderr from a specific test**
 ```bash
 cargo test -p <crate-name> —test <file_name> — —nocapture > output.txt 2>&1
+cargo test --workspace --all-features -- --nocapture 2>&1 | tee test-output.log
 ```
 
 ### **View the saved output**
