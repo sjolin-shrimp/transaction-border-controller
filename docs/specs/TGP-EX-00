@@ -1,0 +1,145 @@
+📗 TGP-EX-00 — Transaction Gateway Protocol: Browser Extension Runtime
+
+Version: 0.1-draft
+Status: Draft
+Audience: Extension developers (Chrome MV3, Firefox, Brave, Safari)
+Purpose: Defines how a browser extension implements TGP-CP-00 in a compliant, safe, non-custodial manner that passes browser store security requirements.
+
+⸻
+
+1. Purpose & Model
+
+The TGP Extension is the default and recommended Client implementation.
+
+It:
+	•	receives x402 signals
+	•	parses TGP envelopes
+	•	communicates with the user’s TBC
+	•	constructs transactions
+	•	forwards them to wallets for signing
+	•	routes signed transactions
+
+The extension MUST be:
+	•	permission-minimal
+	•	non-custodial
+	•	non-injective into password or key fields
+	•	compliant with Chrome MV3, Safari WKWebExtension, and Firefox standards
+	•	secure and transparent
+
+⸻
+
+2. Extension Architecture
+
+Components:
+	1.	Background Service Worker (MV3)
+	•	short-lived
+	•	event-driven
+	•	handles TGP queries, TBC calls, transaction routing
+	2.	Content Script (optional)
+	•	listens for x402 messages emitted by dApps or agents
+	•	MUST NOT read sensitive fields
+	•	MUST NOT access secure iframes
+	3.	UI Panel / Popup
+	•	displays TGP status: “TGP Present”, session info, TBC status
+	4.	Local Storage
+	•	stores session metadata (non-sensitive)
+	•	MUST NOT store private keys
+	5.	RPC Module
+	•	handles direct transaction submission
+
+⸻
+
+3. Permissions
+
+The extension MUST NOT request unnecessary permissions.
+
+Allowed:
+	•	activeTab
+	•	storage
+	•	scripting
+	•	notifications
+	•	fetch
+	•	host permissions limited to user-provided TBC endpoint
+	•	optional dApp pages where x402 messages reside
+
+Forbidden:
+	•	clipboardRead
+	•	clipboardWrite
+	•	webRequestBlocking
+	•	intercepting wallet popups
+	•	keylogging or DOM scraping
+
+⸻
+
+4. Extension Event Flow
+	1.	Receive payment_required from a content script bridge
+	2.	Construct TGP envelope
+	3.	Background worker sends QUERY → TBC
+	4.	TBC sends ACK
+	5.	Background worker builds raw TX
+	6.	Extension popup asks user: “Proceed with TGP session?”
+	7.	TX forwarded to wallet (EIP-1193)
+	8.	Wallet signs
+	9.	Background worker routes signed tx
+	10.	Extension logs session + receipt metadata
+
+⸻
+
+5. TBC Communication Requirements
+
+Extension MUST:
+	•	use HTTPS
+	•	validate certificates
+	•	only communicate with user-configured endpoints
+	•	handle timeouts gracefully
+	•	use short-lived fetch() calls
+
+Extension MUST NOT:
+	•	maintain persistent WebSocket connections unless user explicitly enables “Agent Mode”
+	•	beacon to third-party servers
+
+⸻
+
+6. Security Requirements
+
+Extension MUST NOT:
+	•	request seed words
+	•	handle private keys
+	•	persist sensitive transaction data
+	•	alter wallet signing flows
+	•	fake transaction confirmations
+	•	intercept wallet popups
+
+Extension MUST:
+	•	be open source (recommended but not required)
+	•	clearly disclose all network endpoints
+	•	support isolated worlds (content scripts cannot access page JS directly)
+
+⸻
+
+7. Wallet Interaction
+
+Extension MUST:
+	•	detect wallet presence
+	•	send standard transaction requests via EIP-1193
+	•	never bypass user approval
+
+Extension MAY:
+	•	display a “TGP NAT Present” signal inside the extension popup
+	•	expose session info to the wallet via custom events (optional)
+
+⸻
+
+8. Compliance Across Browsers
+
+Chrome MV3
+	•	use Service Worker
+	•	no persistent background scripts
+
+Firefox
+	•	may allow background pages
+	•	same security rules
+
+Safari
+	•	WKWebExtension; permissions heavily restricted
+	•	must avoid injected scripts that read sensitive fields

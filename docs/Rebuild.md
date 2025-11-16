@@ -1,6 +1,6 @@
 # CoreProver Repository Layout for TBC Integration
 
-Here’s a comprehensive repository structure that integrates CoreProver into your existing TBC (Transaction Border Controller) Rust codebase:
+Here’s a comprehensive repository structure that integrates CoreProver into the existing TBC (Transaction Border Controller) Rust codebase:
 
 ```
 transaction-border-controller/
