@@ -88,6 +88,205 @@ Merchants use TBC to power commerce using the CoreProver dual-commitment engine.
 - Digital goods sellers  
 
 ---
+Below is a clean, drop-in “Standards Alignment” section for TBC-MGMT-00.
+This is written exactly the way Claude, telecom operators, and YC reviewers expect—concise, authoritative, and explicitly modern.
+
+You can paste this directly under Section 1 or as Section 1.5 – Standards Alignment.
+
+⸻
+
+1.5 Standards Alignment
+
+The Transaction Border Controller (TBC) is positioned as a modern network element designed to integrate cleanly with contemporary carrier, enterprise, and cloud-native operational environments. TBC-MGMT adopts a model-driven, schema-first management architecture, aligning with current industry standards while maintaining backward compatibility with legacy monitoring systems.
+
+This section summarizes how TBC-MGMT relates to major network-management standards.
+
+⸻
+
+1.5.1 Model-Driven Management (YANG-Inspired)
+
+TBC-MGMT follows a schema-first design modeled after IETF YANG and OpenConfig principles:
+	•	All device configuration and operational state is represented in structured, versioned schemas.
+	•	The internal management model is the authoritative source of truth.
+	•	GUI, CLI, REST, and gRPC interfaces are generated from the same schema, ensuring consistency and eliminating out-of-sync configuration surfaces.
+
+Although TBC does not require literal YANG, schemas are intentionally compatible with future adapters for:
+	•	OpenConfig-style YANG publishing
+	•	YANG → gNMI translation
+	•	YANG → NETCONF/RESTCONF adapters
+
+This allows the TBC to be integrated into traditional NMS systems if required by large operators.
+
+⸻
+
+1.5.2 NETCONF & RESTCONF Compatibility (Future Adapter Layer)
+
+While NETCONF/RESTCONF is not used as the primary management protocol for TBCs, the internal data model is designed such that:
+	•	A NETCONF server can be added as an adapter layer without changing the core system.
+	•	A RESTCONF interface can expose YANG-style configuration for operators requiring strict IETF alignment.
+
+This future-proofs the platform for:
+	•	Carriers
+	•	Large ISPs
+	•	Government networks
+	•	Enterprises with standard NMS tooling
+
+Positioning: NETCONF/RESTCONF = optional integration layer, not the primary API.
+
+⸻
+
+1.5.3 gNMI / gNOI Alignment (Modern Telemetry & Ops)
+
+Modern device management increasingly uses gNMI (gRPC Network Management Interface) and gNOI for operational actions. TBC-MGMT aligns with this trend:
+	•	Telemetry
+The TBC internal event/metrics pipeline is compatible with gNMI-style streaming telemetry:
+	•	Real-time settlement metrics
+	•	Cross-chain latency probes
+	•	Routing decisions
+	•	Escrow state transitions
+	•	Device health counters
+	•	Operational Actions (gNOI-style)
+TBC-MGMT reserves API endpoints for:
+	•	Certificate rotation
+	•	Software/OS updates
+	•	Device attestation (future)
+
+This allows seamless integration with cloud-native telemetry collectors and operator tooling without SNMP’s polling overhead.
+
+Positioning:
+gNMI/gNOI = recommended future integration path for modern Operators.
+
+⸻
+
+1.5.4 SNMPv3 Support (Monitoring-Only)
+
+SNMPv3 is supported solely for monitoring and backward compatibility.
+TBC-MGMT does not expose configuration endpoints via SNMP.
+
+The TBC provides a minimal set of MIBs suitable for legacy NMS dashboards:
+	•	tbcHealth
+	•	tbcSessions
+	•	tbcChainStatus
+	•	tbcUpgradeStatus
+
+Security model:
+	•	USM authentication + privacy (AES)
+	•	VACM view restrictions
+	•	Read-only OIDs only
+
+SNMPv1/v2c are not supported due to their security weaknesses.
+
+Positioning:
+SNMPv3 = backward-compatible monitoring layer.
+
+⸻
+
+1.5.5 REST / gRPC as Primary Management Interfaces
+
+The TBC-MGMT system uses:
+	•	REST/JSON API for:
+	•	Merchant Payment Profiles
+	•	CoreProver deployment workflows
+	•	Integration with e-commerce platforms
+	•	TGP routing parameters
+	•	Device & cluster configuration
+	•	gRPC API for:
+	•	Operator telemetry
+	•	High-volume or real-time state queries
+	•	CLI operations
+	•	TBC-to-TBC multi-node coordination
+
+These APIs:
+	•	Enforce RBAC
+	•	Support OAuth2 / OIDC / mTLS authentication
+	•	Use the same schema model as UI and CLI
+
+Positioning:
+REST/gRPC = the authoritative and preferred management interface.
+
+⸻
+
+1.5.6 Embedded Device UI Alignment
+
+The TBC includes a built-in management console served over HTTPS that uses:
+	•	A local SPA frontend (React/Svelte)
+	•	The same REST/gRPC APIs used by the cloud dashboard
+	•	Bootstrap authentication + optional hardware key binding
+	•	mTLS or OAuth2 for Operator deployments
+
+This mirrors modern network device UX (Arista EOS, Juniper Mist, Ubiquiti, etc.).
+
+Positioning:
+Embedded UI = local management interface mirroring cloud capabilities.
+
+⸻
+
+1.5.7 CLI Alignment
+
+The tbc-mgmt CLI is aligned with modern cloud/network tooling:
+	•	Follows patterns of:
+	•	kubectl
+	•	gcloud
+	•	gh
+	•	open-source routers with model-driven CLIs
+
+CLI commands map 1:1 to schema-defined API operations.
+No “snowflake” CLI behaviors; no device-specific parsing.
+
+Positioning:
+CLI = syntactic sugar over REST/gRPC model operations.
+
+⸻
+
+1.5.8 Security Standards Alignment
+
+TBC-MGMT adheres to contemporary best practices:
+	•	mTLS for device-to-cloud communication
+	•	FIPS-compliant cryptography (optional mode)
+	•	JWT/OAuth2/OIDC for operator & merchant auth
+	•	Role-based access control (RBAC) at API layer
+	•	Zero Trust principle for all device communication
+	•	Optional HSM-backed key management for Operators
+
+Positioning:
+Security = modern, Zero-Trust, aligned with enterprise cloud & telco requirements.
+
+⸻
+
+1.5.9 Summary Table
+
+Capability	Standard	TBC-MGMT Alignment
+Configuration (primary)	REST / gRPC	Fully supported
+Configuration (model-driven)	YANG / OpenConfig	Schema-compatible; future-adaptable
+Traditional config	NETCONF / RESTCONF	Optional adapter layer
+Telemetry	gNMI	Schema-aligned, future adapter
+Ops/maintenance	gNOI	Future adapter
+Monitoring	SNMPv3	Minimal read-only MIB
+Local UI	Embedded HTTPS SPA	Fully supported
+CLI	Schema-driven	Fully supported
+Security	mTLS, OIDC, RBAC	Fully supported
+
+
+⸻
+
+1.5.10 Design Philosophy: Modern, Interoperable, Forward-Compatible
+
+The TBC is designed to behave like a 2025-class network element, not a legacy appliance:
+	•	Model-driven core
+	•	Modern telemetry
+	•	REST/gRPC first
+	•	SNMPv3 for compatibility
+	•	NETCONF/gNMI adapters for operators who require them
+	•	Embedded UI for single-device owners
+	•	Merchant dashboard for commercial users
+	•	Unified schema guaranteeing consistent behavior across all entry points
+
+This ensures TBC-MGMT fits the needs of:
+	•	Carriers
+	•	Datacenters
+	•	Enterprises
+	•	Small merchants
+	•	Solo TBC operators
 
 # 2. System Architecture
 
