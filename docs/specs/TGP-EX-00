@@ -1,145 +1,297 @@
 📗 TGP-EX-00 — Transaction Gateway Protocol: Browser Extension Runtime
 
 Version: 0.1-draft
-Status: Draft
-Audience: Extension developers (Chrome MV3, Firefox, Brave, Safari)
-Purpose: Defines how a browser extension implements TGP-CP-00 in a compliant, safe, non-custodial manner that passes browser store security requirements.
+Status: Draft (internal)
+Author: Ledger of Earth
+Audience: Browser extension developers, wallet developers, agent-framework developers
+Purpose: Define the browser-resident runtime that implements TGP-CP-00 securely, safely, and compatibly with Chrome MV3, Firefox, Brave, Edge, and Safari.
 
 ⸻
 
-1. Purpose & Model
+0. Overview
 
-The TGP Extension is the default and recommended Client implementation.
+The TGP Extension Runtime (TGP-EX) is the default implementation of the TGP Client defined in TGP-CP-00. It allows any wallet—without modification—to participate in protected TGP/TBC-mediated transactions.
 
-It:
-	•	receives x402 signals
-	•	parses TGP envelopes
-	•	communicates with the user’s TBC
-	•	constructs transactions
-	•	forwards them to wallets for signing
-	•	routes signed transactions
+The extension:
+	•	listens for x402 payment_required events
+	•	constructs and sends TGP QUERY to the TBC
+	•	receives and obeys TGP ACK
+	•	constructs blockchain transactions exactly as instructed
+	•	forwards transactions to wallets for signing
+	•	routes signed transactions to RPC or TBC relay endpoints
 
-The extension MUST be:
-	•	permission-minimal
-	•	non-custodial
-	•	non-injective into password or key fields
-	•	compliant with Chrome MV3, Safari WKWebExtension, and Firefox standards
-	•	secure and transparent
+The extension never handles private keys or intercepts wallet popups.
 
 ⸻
 
-2. Extension Architecture
+1. Architectural Model
 
-Components:
-	1.	Background Service Worker (MV3)
-	•	short-lived
-	•	event-driven
-	•	handles TGP queries, TBC calls, transaction routing
-	2.	Content Script (optional)
-	•	listens for x402 messages emitted by dApps or agents
-	•	MUST NOT read sensitive fields
-	•	MUST NOT access secure iframes
-	3.	UI Panel / Popup
-	•	displays TGP status: “TGP Present”, session info, TBC status
-	4.	Local Storage
-	•	stores session metadata (non-sensitive)
-	•	MUST NOT store private keys
-	5.	RPC Module
-	•	handles direct transaction submission
+The TGP Extension consists of:
 
-⸻
+1. Background Service Worker
+	•	Implements QUERY/ACK communication
+	•	Constructs transactions
+	•	Handles routing
+	•	Maintains minimal session state
+	•	Event-driven (MV3 compliant)
 
-3. Permissions
+2. Content Script (Isolated World)
+	•	Detects x402 payment_required signals on dApp pages
+	•	Injects TGP Presence API object (window.tgp)
+	•	Listens/forwards events
+	•	DOES NOT read or interact with sensitive DOM nodes
 
-The extension MUST NOT request unnecessary permissions.
+3. UI Components
+	•	Popup for user settings (TBC URL, enable/disable TGP, logs)
+	•	Optional badge (TGP Active indicator)
 
-Allowed:
-	•	activeTab
-	•	storage
-	•	scripting
-	•	notifications
-	•	fetch
-	•	host permissions limited to user-provided TBC endpoint
-	•	optional dApp pages where x402 messages reside
-
-Forbidden:
-	•	clipboardRead
-	•	clipboardWrite
-	•	webRequestBlocking
-	•	intercepting wallet popups
-	•	keylogging or DOM scraping
+4. Local Storage
+	•	Stores:
+	•	session metadata
+	•	TBC URL
+	•	Never stores:
+	•	private keys
+	•	wallet seeds
+	•	signed transactions
 
 ⸻
 
-4. Extension Event Flow
-	1.	Receive payment_required from a content script bridge
-	2.	Construct TGP envelope
-	3.	Background worker sends QUERY → TBC
-	4.	TBC sends ACK
-	5.	Background worker builds raw TX
-	6.	Extension popup asks user: “Proceed with TGP session?”
-	7.	TX forwarded to wallet (EIP-1193)
-	8.	Wallet signs
-	9.	Background worker routes signed tx
-	10.	Extension logs session + receipt metadata
+2. Permissions (Strict Minimum)
+
+A compliant extension MUST request only:
+
+Permission	Purpose
+storage	TBC endpoint & session metadata
+activeTab	Detect x402 events from page
+scripting	Inject Presence API object
+notifications	Optional user alerts
+host permissions	Only for user-entered TBC endpoint
+
+Forbidden permissions:
+	•	webRequestBlocking (highly scrutinized)
+	•	clipboardRead or clipboardWrite
+	•	Any password/credential access
+	•	Reading or modifying wallet popups
+	•	Access to browser internal APIs related to keys
+
+This ensures storefront approval across Chrome, Brave, Firefox, Safari.
 
 ⸻
 
-5. TBC Communication Requirements
+3. Event Flow
 
-Extension MUST:
+3.1 Step-by-step sequence
+
+1. x402 detected
+Content script receives a payment_required x402 message from the page.
+
+2. Message forwarded
+Content script → background worker via extension messaging.
+
+3. QUERY constructed
+Extension creates a TGP QUERY using TGP-CP-00 format.
+
+4. QUERY → TBC
+Background worker sends HTTPS request to user-provided TBC endpoint.
+
+5. ACK received
+Extension receives TGP ACK with transaction instructions.
+
+6. Construct transaction
+Extension builds transaction exactly per ACK instructions (to, data, value, chain_id).
+
+7. Request wallet signature
+Extension triggers ethereum.request({method: 'eth_sendTransaction'...}) or equivalent.
+
+8. Wallet signs normally
+Wallet remains ignorant of TGP.
+Only shows a standard transaction popup.
+
+9. Route signed tx
+Extension routes per ACK:
+	•	direct → RPC
+	•	relay → TBC endpoint
+
+10. Escrow sequencing
+If next_verb not terminal, the extension loops back to step 3.
+
+⸻
+
+4. TBC Communication Requirements
+
+A TGP-EX-compliant extension MUST:
 	•	use HTTPS
 	•	validate certificates
-	•	only communicate with user-configured endpoints
-	•	handle timeouts gracefully
-	•	use short-lived fetch() calls
+	•	reject non-TLS endpoints
+	•	use short-lived fetch() calls (no persistent background pages)
 
-Extension MUST NOT:
-	•	maintain persistent WebSocket connections unless user explicitly enables “Agent Mode”
-	•	beacon to third-party servers
+Optional (Agent Mode only):
+	•	user-approved WebSocket to TBC
 
-⸻
-
-6. Security Requirements
-
-Extension MUST NOT:
-	•	request seed words
-	•	handle private keys
-	•	persist sensitive transaction data
-	•	alter wallet signing flows
-	•	fake transaction confirmations
-	•	intercept wallet popups
-
-Extension MUST:
-	•	be open source (recommended but not required)
-	•	clearly disclose all network endpoints
-	•	support isolated worlds (content scripts cannot access page JS directly)
+The extension MUST NOT:
+	•	leak metadata to any server except the user’s TBC
+	•	connect to third-party analytics
+	•	phone home
+	•	maintain long-running hidden loops (MV3 violation)
 
 ⸻
 
-7. Wallet Interaction
+5. x402 Integration
 
-Extension MUST:
-	•	detect wallet presence
-	•	send standard transaction requests via EIP-1193
-	•	never bypass user approval
+The extension MUST support x402 event detection via:
+	•	content script listening to window.postMessage
+	•	detecting standard payment_required fields
+	•	forwarding minimal fields to background worker
 
-Extension MAY:
-	•	display a “TGP NAT Present” signal inside the extension popup
-	•	expose session info to the wallet via custom events (optional)
+The extension MUST NOT:
+	•	parse or modify confidential merchant content
+	•	read arbitrary DOM content beyond x402 event payload
 
 ⸻
 
-8. Compliance Across Browsers
+6. Transaction Construction Requirements
+
+A TGP-EX MUST:
+	•	use ACK transaction parameters verbatim
+	•	not modify calldata or destination
+	•	not override chain_id
+	•	not inject extra fields
+
+A TGP-EX MUST NOT:
+	•	broadcast unsigned transactions
+	•	bypass user wallet confirmations
+	•	request private keys
+	•	perform signing internally
+
+Wallet is the signer.
+Extension is the policy/router.
+
+⸻
+
+7. TGP Presence API (Wallet-Detected Signal)
+
+(NEW — final version)
+
+The extension MUST expose a “presence flag” detectable by wallets.
+
+7.1 window.tgp Injection
+
+Injected via isolated-world content script:
+
+window.tgp = {
+  version: "0.1",
+  active: true,
+  tbc: {
+    reachable: true | false
+  }
+};
+
+Wallets MAY read:
+
+if (window.tgp?.active) {
+    // enable TGP indicator
+}
+
+7.2 Presence Event
+
+Extension MUST emit:
+
+document.dispatchEvent(
+  new CustomEvent("tgp:present", {
+    detail: {
+      version: "0.1",
+      reachable: true | false
+    }
+  })
+);
+
+Wallets MAY subscribe:
+
+document.addEventListener("tgp:present", (e) => {
+  // Wallet knows TGP is active
+});
+
+7.3 Security Constraints
+
+Presence API MUST NOT expose:
+	•	TBC URL
+	•	session IDs
+	•	routing data
+	•	merchant profiles
+	•	x402 metadata
+	•	any blockchain transaction data
+
+It MAY expose only:
+	•	active
+	•	version
+	•	TBC reachability boolean
+
+⸻
+
+8. Security Requirements
+
+The TGP Extension MUST NOT:
+	•	request seed phrases
+	•	display misleading transaction details
+	•	observe or modify wallet UI
+	•	intercept popups
+	•	monitor keystrokes
+	•	inspect password fields
+	•	scrape DOM
+	•	capture wallet RPC traffic
+
+The extension MUST:
+	•	operate purely as a router + policy client
+	•	keep all behavior transparent
+	•	remain auditable
+
+⸻
+
+9. Browser Compliance
 
 Chrome MV3
-	•	use Service Worker
-	•	no persistent background scripts
+	•	Must use service_worker
+	•	No persistent background scripts
+	•	Script injection must use isolated worlds
 
 Firefox
-	•	may allow background pages
-	•	same security rules
+	•	Equivalent behavior allowed
+	•	Background page may be permitted, but MUST mimic MV3 restrictions for portability
 
-Safari
-	•	WKWebExtension; permissions heavily restricted
-	•	must avoid injected scripts that read sensitive fields
+Safari/WKWebExtension
+	•	Tightly sandboxed; extension must minimize permissions
+	•	Content script MUST avoid sensitive DOM access
+
+⸻
+
+10. Compliance Tests
+
+A TGP-EX implementation MUST pass:
+	1.	Presence API test
+	•	window.tgp exposed
+	•	tgp:present event emitted
+	2.	x402 detection test
+	•	Content script passes payment_required reliably
+	3.	QUERY/ACK loop test
+	•	Proper handling of TBC responses
+	4.	Transaction construction correctness
+	5.	Wallet integration test
+	•	Standard signing popup triggered
+	6.	Routing correctness test
+	•	RPC vs TBC relay modes
+	7.	Escrow sequencing test
+	8.	Security sandbox test
+	•	No forbidden DOM access
+
+⸻
+
+End of Finalized TGP-EX-00 Draft
+
+⸻
+
+This spec is now polished, self-contained, and ready for:
+	•	GitHub
+	•	the protocol doc folder
+	•	inclusion in the TGP-00 umbrella spec
+	•	sharing with KD / wallet devs when appropriate
+	•	internal engineering alignment
